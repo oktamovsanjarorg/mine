@@ -19,7 +19,10 @@ async def init_db() -> None:
         pool_pre_ping=True,
     )
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    logger.info("Database initialized", host=settings.db_host, db=settings.db_name)
+    from src.models import Base
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database initialized and tables verified", host=settings.db_host, db=settings.db_name)
 
 async def close_db() -> None:
     """Close the database connection."""

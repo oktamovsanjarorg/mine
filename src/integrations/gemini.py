@@ -9,10 +9,15 @@ class GeminiClient:
     """Client for Google Gemini API."""
 
     def __init__(self):
-        if settings.GEMINI_API_KEY:
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel("gemini-pro")
-        self.vision_model = genai.GenerativeModel("gemini-pro-vision")
+        raw_key = settings.gemini_api_key
+        key = raw_key.get_secret_value() if hasattr(raw_key, "get_secret_value") else str(raw_key) if raw_key else None
+        if key:
+            try:
+                genai.configure(api_key=key)
+            except Exception as e:
+                logger.warning("Failed to configure genai", error=str(e))
+        self.model = genai.GenerativeModel("gemini-1.5-flash") if key else None
+        self.vision_model = genai.GenerativeModel("gemini-1.5-flash") if key else None
 
     async def generate_text(self, prompt: str, system_prompt: str = "", max_tokens: int = 1000, temperature: float = 0.7) -> str:
         try:

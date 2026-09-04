@@ -10,7 +10,9 @@ class OpenAIIntegration:
     """Client for OpenAI API."""
 
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY) if settings.OPENAI_API_KEY else None
+        raw_key = settings.openai_api_key
+        key = raw_key.get_secret_value() if hasattr(raw_key, "get_secret_value") else str(raw_key) if raw_key else None
+        self.client = AsyncOpenAI(api_key=key) if key else None
 
     async def chat_completion(self, messages: List[Dict[str, Any]], model: str = "gpt-3.5-turbo", max_tokens: int = 1000) -> str:
         if not self.client:

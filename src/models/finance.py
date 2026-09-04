@@ -14,7 +14,7 @@ class Transaction(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "transactions"
     __table_args__ = (
         Index('ix_user_id_date', 'user_id', 'date'),
-        Index('ix_user_id_type', 'user_id', 'type'),
+        Index('ix_transaction_user_type', 'user_id', 'type'),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

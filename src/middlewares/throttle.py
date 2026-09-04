@@ -13,6 +13,13 @@ class ThrottleMiddleware(BaseMiddleware):
         self.period = period
         self.redis_client = redis_client
 
+    @property
+    def client(self):
+        if self.redis_client:
+            return self.redis_client
+        from src.core import redis
+        return redis.redis_client
+
     async def __call__(
         self,
         handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
@@ -23,18 +30,19 @@ class ThrottleMiddleware(BaseMiddleware):
         if isinstance(event, (Message, CallbackQuery)):
             user = event.from_user
 
-        if not user or not self.redis_client:
+        redis_conn = self.client
+        if not user or not redis_conn:
             return await handler(event, data)
 
-        if user.id in settings.bot_admin_ids:
+        if user.id in settings.bot_admin_ids or user.id in settings.admin_ids:
             return await handler(event, data)
 
         key = f"throttle:{user.id}"
         
         # Redis INCR + EXPIRE pattern
-        current = await self.redis_client.incr(key)
+        current = await redis_conn.incr(key)
         if current == 1:
-            await self.redis_client.expire(key, self.period)
+            await redis_conn.expire(key, self.period)
 
         if current > self.rate_limit:
             throttle_msg = "⏳ Kechirasiz, siz juda ko'p so'rov yubordingiz. Biroz kuting."

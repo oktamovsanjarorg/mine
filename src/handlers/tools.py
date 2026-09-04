@@ -34,8 +34,20 @@ async def get_timestamp(message: Message) -> None:
 
 @router.message(Command("weather"))
 async def get_weather(message: Message) -> None:
-    """Get weather info."""
-    await message.answer("🌤 Toshkent shahrida hozir ob-havo ochiq, harorat +25°C.")
+    """Get weather info and warn if sharp temperature change >= 10°C."""
+    from src.integrations.weather import weather_client
+    data = await weather_client.get_current("Tashkent")
+    text = (
+        f"🌤 <b>Toshkent shahrida ob-havo:</b>\n\n"
+        f"🌡 Harorat: <b>{data['temp']}°C</b> (sezilishi: {data['feels_like']}°C)\n"
+        f"💧 Namlik: {data['humidity']}%\n"
+        f"💨 Shamol: {data['wind']} m/s\n"
+        f"☁️ Holat: {data['description']}"
+    )
+    should_alert, alert_msg = await weather_client.check_temperature_difference("Tashkent", threshold=10.0)
+    if should_alert:
+        text += f"\n\n{alert_msg}"
+    await message.answer(text)
 
 @router.message(Command("calc"))
 async def calc_math(message: Message) -> None:

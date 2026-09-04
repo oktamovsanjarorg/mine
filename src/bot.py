@@ -22,12 +22,13 @@ def create_dispatcher() -> Dispatcher:
 
 def register_routers(dp: Dispatcher) -> None:
     """Register all handler routers."""
-    from src.handlers import common, tasks, notes, reminders, finance, habits, health
+    from src.handlers import guest, common, tasks, notes, reminders, finance, habits, health
     from src.handlers import journal, bookmarks, goals, flashcards, contacts, snippets
     from src.handlers import files, monitors, rss, pomodoro, ai_chat, quick_notes, tools
     from src.handlers import export as export_handler, admin
 
     routers = [
+        guest.router,
         common.router, tasks.router, notes.router, reminders.router,
         finance.router, habits.router, health.router, journal.router,
         bookmarks.router, goals.router, flashcards.router, contacts.router,

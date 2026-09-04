@@ -17,3 +17,6 @@ class CodeSnippet(Base, TimestampMixin, SoftDeleteMixin):
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"))
 
     category: Mapped["Category"] = relationship()
+
+
+Snippet = CodeSnippet

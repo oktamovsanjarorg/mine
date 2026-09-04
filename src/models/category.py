@@ -19,7 +19,7 @@ class Category(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "categories"
     __table_args__ = (
         UniqueConstraint('user_id', 'name', 'type', name='uq_user_category_name_type'),
-        Index('ix_user_id_type', 'user_id', 'type'),
+        Index('ix_category_user_type', 'user_id', 'type'),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

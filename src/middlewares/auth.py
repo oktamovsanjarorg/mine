@@ -36,7 +36,7 @@ class AuthMiddleware(BaseMiddleware):
                 username=user.username,
                 first_name=user.first_name,
                 last_name=user.last_name,
-                language_code=user.language_code
+                language=user.language_code or "uz"
             )
         else:
             await user_repo.update_last_active(db_user.id)

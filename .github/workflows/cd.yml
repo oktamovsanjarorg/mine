@@ -1,9 +1,12 @@
-name: CD
+name: CD (Deploy to utest & Docker Hub)
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build-and-push:
@@ -11,36 +14,119 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        
-      - name: Login to GitHub Container Registry
+
+      - name: Login to GitHub Container Registry (GHCR)
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Build and push
+
+      - name: Login to Docker Hub
+        if: env.DOCKERHUB_USER != ''
+        uses: docker/login-action@v3
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+            ${{ secrets.DOCKERHUB_USERNAME || 'sanjaroktamov' }}/mine
+
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ./Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}:latest, ghcr.io/${{ github.repository }}:${{ github.ref_name }}
-          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME || 'sanjaroktamov' }}/mine:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  deploy:
+  deploy-to-utest:
     needs: build-and-push
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     steps:
-      - name: Deploy to Server
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to utest server via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script_stop: true
           script: |
-            cd /opt/sanjar-bot
-            docker compose pull
-            docker compose up -d
+            echo "🚀 Deploying SanjarBot to utest server..."
+            mkdir -p ~/sanjar-bot
+            cd ~/sanjar-bot
+
+            # Create or update .env from environment
+            cat << 'EOF' > .env
+            BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+            ADMIN_IDS=[${{ secrets.ADMIN_IDS || '7537966029' }}]
+            BOT_ADMIN_IDS=[${{ secrets.BOT_ADMIN_IDS || '7537966029' }}]
+            BOT_MODE=polling
+
+            POSTGRES_USER=${{ secrets.POSTGRES_USER || 'sanjar' }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD || 'sanjar_db_password_123' }}
+            POSTGRES_DB=${{ secrets.POSTGRES_DB || 'sanjar_bot_db' }}
+            POSTGRES_HOST=postgres
+            POSTGRES_PORT=5432
+
+            DB_USER=${{ secrets.POSTGRES_USER || 'sanjar' }}
+            DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD || 'sanjar_db_password_123' }}
+            DB_NAME=${{ secrets.POSTGRES_DB || 'sanjar_bot_db' }}
+            DB_HOST=postgres
+            DB_PORT=5432
+            DB_ECHO=false
+
+            REDIS_HOST=redis
+            REDIS_PORT=6379
+            REDIS_DB=0
+            REDIS_FSM_DB=1
+
+            MINIO_HOST=minio
+            MINIO_PORT=9000
+            MINIO_ENDPOINT=minio:9000
+            MINIO_ACCESS_KEY=${{ secrets.MINIO_ACCESS_KEY || 'minioadmin' }}
+            MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY || 'minioadmin' }}
+            MINIO_ROOT_USER=${{ secrets.MINIO_ACCESS_KEY || 'minioadmin' }}
+            MINIO_ROOT_PASSWORD=${{ secrets.MINIO_SECRET_KEY || 'minioadmin' }}
+            MINIO_BUCKET=sanjar-bot-files
+            MINIO_SECURE=false
+
+            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY || 'gB4npx0bWoHdwQ6bJl7nNdT532wIN7or_tXBA9F_o08=' }}
+            LOG_LEVEL=INFO
+            TZ=Asia/Tashkent
+            DEFAULT_LOCALE=uz
+            EOF
+
+            # Clone or pull code
+            if [ -d .git ]; then
+              git pull origin main
+            else
+              git clone https://github.com/${{ github.repository }}.git .
+            fi
+
+            # Deploy with Docker Compose
+            docker compose pull || true
+            docker compose up -d --build
+            echo "✅ Deployment on utest finished successfully!"

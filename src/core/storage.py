@@ -15,10 +15,15 @@ client: Optional[Minio] = None
 async def init_storage() -> None:
     """Initialize MinIO client and ensure bucket exists."""
     global client
+    secret_key = (
+        settings.minio_secret_key.get_secret_value()
+        if hasattr(settings.minio_secret_key, "get_secret_value")
+        else str(settings.minio_secret_key)
+    )
     client = Minio(
         settings.minio_endpoint,
         access_key=settings.minio_access_key,
-        secret_key=settings.minio_secret_key,
+        secret_key=secret_key,
         secure=settings.minio_secure
     )
     try:

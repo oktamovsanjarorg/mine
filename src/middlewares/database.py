@@ -8,8 +8,17 @@ logger = structlog.get_logger()
 
 class DatabaseMiddleware(BaseMiddleware):
     """Database session management middleware."""
-    def __init__(self, session_factory: async_sessionmaker):
-        self.session_factory = session_factory
+    def __init__(self, session_factory: async_sessionmaker | None = None):
+        self._session_factory = session_factory
+
+    @property
+    def session_factory(self) -> async_sessionmaker:
+        if self._session_factory is not None:
+            return self._session_factory
+        from src.core import database
+        if database.session_factory is None:
+            raise RuntimeError("Database session factory is not initialized")
+        return database.session_factory
 
     async def __call__(
         self,
