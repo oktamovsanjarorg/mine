@@ -1,0 +1,24 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: SanjarBot 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-01 00:00+0000\n"
+"PO-Revision-Date: 2024-01-01 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "welcome_message"
+msgstr "👋 Hello! Welcome to SanjarBot! \nHow can I help you?"
+
+msgid "error_occurred"
+msgstr "❌ Sorry, an error occurred. Please try again later."
+
+msgid "settings_menu"
+msgstr "⚙️ Settings:"
+
+msgid "language_changed"
+msgstr "🇬🇧 Language successfully changed!"
