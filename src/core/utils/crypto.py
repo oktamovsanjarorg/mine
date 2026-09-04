@@ -5,11 +5,24 @@ import uuid
 import base64
 
 def generate_password(length: int = 16, include_special: bool = True) -> str:
-    """Generate a secure random password."""
+    """Generate a secure random password guaranteeing uppercase, lowercase, and digit."""
+    if length < 4:
+        length = 4
+    chars = [
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.digits),
+    ]
     alphabet = string.ascii_letters + string.digits
     if include_special:
+        chars.append(secrets.choice("!@#$%^&*()_+-=[]{}|;:,.<>?"))
         alphabet += "!@#$%^&*()_+-=[]{}|;:,.<>?"
-    return ''.join(secrets.choice(alphabet) for i in range(length))
+    
+    while len(chars) < length:
+        chars.append(secrets.choice(alphabet))
+        
+    secrets.SystemRandom().shuffle(chars)
+    return ''.join(chars[:length])
 
 def generate_uuid() -> str:
     """Generate a new UUID string."""
@@ -34,3 +47,8 @@ def base64_encode(data: str) -> str:
 def base64_decode(data: str) -> str:
     """Base64 decode a string."""
     return base64.b64decode(data.encode('utf-8')).decode('utf-8')
+
+def verify_hash(data: str, hash_value: str) -> bool:
+    """Verify data matches a SHA256 hash."""
+    return hash_sha256(data) == hash_value
+

@@ -45,20 +45,34 @@ def format_date(d: date, format: str = '%d.%m.%Y') -> str:
     return d.strftime(format)
 
 def format_relative(dt: datetime) -> str:
-    """Format a datetime object relative to now (e.g. '5 daqiqa oldin')."""
+    """Format a datetime object relative to now (e.g. '5 daqiqa oldin', '2 soat keyin')."""
     now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
     diff = now - dt
-    if diff.total_seconds() < 0:
-        return "kelajakda"
-    if diff.total_seconds() < 60:
-        return f"{int(diff.total_seconds())} soniya oldin"
-    if diff.total_seconds() < 3600:
-        return f"{int(diff.total_seconds() // 60)} daqiqa oldin"
-    if diff.total_seconds() < 86400:
-        return f"{int(diff.total_seconds() // 3600)} soat oldin"
+    seconds = diff.total_seconds()
+    
+    if seconds < 0:
+        future_secs = -seconds
+        if future_secs < 60:
+            return f"{round(future_secs)} soniya keyin"
+        if future_secs < 3600:
+            return f"{round(future_secs / 60)} daqiqa keyin"
+        if future_secs < 86400:
+            return f"{round(future_secs / 3600)} soat keyin"
+        days = round(future_secs / 86400)
+        if days == 1:
+            return "ertaga"
+        return f"{days} kun keyin"
+
+    if seconds < 60:
+        return f"{int(seconds)} soniya oldin"
+    if seconds < 3600:
+        return f"{int(seconds // 60)} daqiqa oldin"
+    if seconds < 86400:
+        return f"{int(seconds // 3600)} soat oldin"
     if diff.days == 1:
         return "kecha"
     return f"{diff.days} kun oldin"
+
 
 def get_start_of_day(dt: datetime, timezone: str = 'Asia/Tashkent') -> datetime:
     """Get the start of the day for a given datetime."""
