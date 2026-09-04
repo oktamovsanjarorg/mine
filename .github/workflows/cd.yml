@@ -62,14 +62,19 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
+            set -e
             echo "🚀 Deploying SanjarBot to utest server..."
-            mkdir -p ~/sanjar-bot
+            if [ ! -d ~/sanjar-bot/.git ]; then
+              git clone https://github.com/${{ github.repository }}.git ~/sanjar-bot
+            fi
             cd ~/sanjar-bot
+            git fetch origin main
+            git reset --hard origin/main
 
             cat << 'EOF' > .env
             BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-            ADMIN_IDS=[${{ secrets.ADMIN_IDS || '7537966029' }}]
-            BOT_ADMIN_IDS=[${{ secrets.BOT_ADMIN_IDS || '7537966029' }}]
+            ADMIN_IDS=[7537966029]
+            BOT_ADMIN_IDS=[7537966029]
             BOT_MODE=polling
 
             POSTGRES_USER=${{ secrets.POSTGRES_USER || 'sanjar' }}
@@ -106,12 +111,5 @@ jobs:
             DEFAULT_LOCALE=uz
             EOF
 
-            if [ -d .git ]; then
-              git pull origin main
-            else
-              git clone https://github.com/${{ github.repository }}.git .
-            fi
-
-            docker compose pull || true
             docker compose up -d --build
             echo "✅ Deployment on utest finished successfully!"
