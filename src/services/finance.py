@@ -1,5 +1,5 @@
 import structlog
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.repositories.finance import FinanceRepository
@@ -9,9 +9,13 @@ logger = structlog.get_logger(__name__)
 
 class FinanceService:
     """Service for managing finances."""
-    def __init__(self, session: AsyncSession):
-        self.session = session
-        self.repo = FinanceRepository(session)
+    def __init__(self, session_or_repo):
+        if isinstance(session_or_repo, AsyncSession):
+            self.session = session_or_repo
+            self.repo = FinanceRepository(self.session)
+        else:
+            self.repo = session_or_repo
+            self.session = getattr(session_or_repo, "session", None)
 
     async def add_transaction(self, user_id: int, amount: float, category: str, type: str, description: Optional[str] = None) -> Transaction:
         """Add a new transaction."""
@@ -22,18 +26,49 @@ class FinanceService:
                 category=category,
                 type=type,
                 description=description,
-                date=datetime.utcnow()
+                date=datetime.now(timezone.utc)
             )
-            await self.session.commit()
+            if self.session:
+                await self.session.commit()
             return tx
         except Exception as e:
-            await self.session.rollback()
+            if self.session:
+                await self.session.rollback()
             logger.error("Tranzaksiya qo'shishda xatolik", error=str(e))
             raise
 
+    async def add_income(self, user_id: int, amount: float, category: str = "Umumiy", description: Optional[str] = None) -> Transaction:
+        """Helper to add income transaction."""
+        return await self.add_transaction(user_id, amount, category, "income", description)
+
+    async def add_expense(self, user_id: int, amount: float, category: str = "Umumiy", description: Optional[str] = None) -> Transaction:
+        """Helper to add expense transaction."""
+        return await self.add_transaction(user_id, amount, category, "expense", description)
+
+    async def parse_and_create(self, user_id: int, text: str) -> Transaction:
+        """Parse quick string like '50000 tushlik +' or '25000 taksi -' and create transaction."""
+        parts = text.strip().split()
+        if not parts:
+            raise ValueError("Bo'sh matn")
+        
+        amount = float(parts[0])
+        tx_type = "expense"
+        desc_parts = parts[1:]
+        if desc_parts and desc_parts[-1] in ("+", "income"):
+            tx_type = "income"
+            desc_parts = desc_parts[:-1]
+        elif desc_parts and desc_parts[-1] in ("-", "expense"):
+            tx_type = "expense"
+            desc_parts = desc_parts[:-1]
+            
+        desc = " ".join(desc_parts) if desc_parts else "Tezkor amal"
+        return await self.add_transaction(user_id, amount, desc, tx_type, desc)
+
     async def get_balance(self, user_id: int) -> float:
         """Get current balance."""
-        return await self.repo.get_balance(user_id)
+        val = await self.repo.get_balance(user_id)
+        return float(val)
+
 
     async def get_period_summary(self, user_id: int, start_date: datetime, end_date: datetime) -> Dict[str, float]:
         """Get summary for a period."""

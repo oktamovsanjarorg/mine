@@ -37,3 +37,7 @@ class MonitorLog(Base, TimestampMixin):
     checked_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
 
     monitor: Mapped["WebMonitor"] = relationship(back_populates="logs")
+
+# Alias for backward compatibility
+Monitor = WebMonitor
+

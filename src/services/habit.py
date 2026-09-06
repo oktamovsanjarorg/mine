@@ -9,37 +9,46 @@ logger = structlog.get_logger(__name__)
 
 class HabitService:
     """Service for managing habits."""
-    def __init__(self, session: AsyncSession):
-        self.session = session
-        self.repo = HabitRepository(session)
+    def __init__(self, session_or_repo):
+        if isinstance(session_or_repo, AsyncSession):
+            self.session = session_or_repo
+            self.repo = HabitRepository(self.session)
+        else:
+            self.repo = session_or_repo
+            self.session = getattr(session_or_repo, "session", None)
 
     async def create_habit(self, user_id: int, title: str, frequency: str = "daily") -> Habit:
         """Create a new habit."""
         try:
             habit = await self.repo.create(
                 user_id=user_id,
-                title=title,
+                name=title,
                 frequency=frequency,
                 current_streak=0,
-                longest_streak=0
+                best_streak=0
             )
-            await self.session.commit()
+            if self.session:
+                await self.session.commit()
             return habit
         except Exception as e:
-            await self.session.rollback()
+            if self.session:
+                await self.session.rollback()
             logger.error("Odat yaratishda xatolik", error=str(e))
             raise
 
-    async def check_in(self, habit_id: int) -> HabitLog:
+    async def check_in(self, habit_id: int) -> Habit:
         """Check in a habit for today."""
         habit = await self.repo.get_by_id(habit_id)
         if not habit:
             raise ValueError("Odat topilmadi")
             
-        log = await self.repo.create_log(habit_id=habit_id, date=date.today())
+        await self.repo.create_log(habit_id=habit_id, date=date.today())
         await self.update_streaks(habit_id)
-        await self.session.commit()
-        return log
+        if self.session:
+            await self.session.commit()
+        await self.repo.session.refresh(habit)
+        return habit
+
 
     async def undo_check_in(self, habit_id: int) -> bool:
         """Undo a habit check in for today."""

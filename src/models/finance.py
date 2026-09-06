@@ -9,6 +9,9 @@ class TransactionType(str, enum.Enum):
     EXPENSE = "expense"
     TRANSFER = "transfer"
 
+    def __str__(self) -> str:
+        return self.value
+
 class Transaction(Base, TimestampMixin, SoftDeleteMixin):
     """Transaction model for finance tracking."""
     __tablename__ = "transactions"

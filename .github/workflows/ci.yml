@@ -51,7 +51,7 @@ jobs:
       run: |
         ruff check --fix src/ || true
 
-    - name: Run unit tests
+    - name: Run unit and integration tests
       env:
         BOT_TOKEN: 8094516394:AAGdmzdGaOX12AcM6xLaGbUPlXxtd8s35gM
         ADMIN_IDS: "[7537966029]"
@@ -62,4 +62,4 @@ jobs:
         POSTGRES_HOST: localhost
         REDIS_HOST: localhost
       run: |
-        pytest tests/unit/test_utils/ -v
+        pytest tests/ -v

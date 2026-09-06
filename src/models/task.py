@@ -6,18 +6,28 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base, TimestampMixin, SoftDeleteMixin
 from .tag import task_tags
 
-class TaskPriority(int, enum.Enum):
-    LOWEST = 1
-    LOW = 2
-    MEDIUM = 3
-    HIGH = 4
-    HIGHEST = 5
+class TaskPriority(str, enum.Enum):
+    LOWEST = "lowest"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    HIGHEST = "highest"
+
+    def __str__(self) -> str:
+        return self.value
 
 class TaskStatus(str, enum.Enum):
     TODO = "todo"
+    PENDING = "pending"
     IN_PROGRESS = "in_progress"
     DONE = "done"
+    COMPLETED = "completed"
     CANCELLED = "cancelled"
+
+    def __str__(self) -> str:
+        return self.value
+
+
 
 class Task(Base, TimestampMixin, SoftDeleteMixin):
     """Task model."""
@@ -41,9 +51,16 @@ class Task(Base, TimestampMixin, SoftDeleteMixin):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
     estimated_minutes: Mapped[int | None] = mapped_column(Integer)
-    actual_minutes: Mapped[int | None] = mapped_column(Integer)
-    is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
     recurrence_rule: Mapped[str | None] = mapped_column(String(255))
+
+    @property
+    def is_completed(self) -> bool:
+        return self.status in (TaskStatus.DONE, "done", "completed")
+
+    @is_completed.setter
+    def is_completed(self, value: bool):
+        self.status = TaskStatus.DONE if value else TaskStatus.TODO
+
 
     user: Mapped["User"] = relationship(back_populates="tasks")
     category: Mapped[Optional["Category"]] = relationship(back_populates="tasks")

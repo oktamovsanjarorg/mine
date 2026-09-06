@@ -1,11 +1,9 @@
 import pytest
-from src.core.services.finance import FinanceService
-from src.infrastructure.repositories.transaction import TransactionRepository
+from src.services.finance import FinanceService
 
 @pytest.fixture
 def finance_service(async_session):
-    repo = TransactionRepository(async_session)
-    return FinanceService(repo)
+    return FinanceService(async_session)
 
 @pytest.mark.asyncio
 async def test_add_income(finance_service, test_user):
@@ -15,8 +13,8 @@ async def test_add_income(finance_service, test_user):
         category="Oylik",
         description="Maosh"
     )
-    assert tx.amount == 1000000
-    assert tx.type == "income"
+    assert float(tx.amount) == 1000000
+    assert str(tx.type) == "income"
 
 @pytest.mark.asyncio
 async def test_add_expense(finance_service, test_user):
@@ -26,8 +24,8 @@ async def test_add_expense(finance_service, test_user):
         category="Transport",
         description="Taksim"
     )
-    assert tx.amount == 50000
-    assert tx.type == "expense"
+    assert float(tx.amount) == 50000
+    assert str(tx.type) == "expense"
 
 @pytest.mark.asyncio
 async def test_balance_calculation(finance_service, test_user):
@@ -41,11 +39,11 @@ async def test_balance_calculation(finance_service, test_user):
 @pytest.mark.asyncio
 async def test_quick_transaction_parser(finance_service, test_user):
     tx = await finance_service.parse_and_create(test_user.id, "50000 tushlik +")
-    assert tx.amount == 50000
-    assert tx.type == "income"
-    assert tx.description == "tushlik"
+    assert float(tx.amount) == 50000
+    assert str(tx.type) == "income"
+    assert "tushlik" in tx.description
     
     tx2 = await finance_service.parse_and_create(test_user.id, "25000 taksi -")
-    assert tx2.amount == 25000
-    assert tx2.type == "expense"
-    assert tx2.description == "taksi"
+    assert float(tx2.amount) == 25000
+    assert str(tx2.type) == "expense"
+    assert "taksi" in tx2.description

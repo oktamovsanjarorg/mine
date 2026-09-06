@@ -8,6 +8,20 @@ class NoteRepository(BaseRepository[Note]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, Note)
 
+    async def get_by_user_id(self, user_id: int, limit: int = 100, offset: int = 0) -> Sequence[Note]:
+        return await self.get_all(user_id=user_id, offset=offset, limit=limit)
+
+    async def search(self, user_id: int, query: str) -> Sequence[Note]:
+        from sqlalchemy import or_
+        stmt = select(Note).where(
+            Note.user_id == user_id,
+            Note.is_deleted == False,
+            or_(Note.title.ilike(f"%{query}%"), Note.content.ilike(f"%{query}%"))
+        ).order_by(Note.created_at.desc())
+        res = await self.session.execute(stmt)
+        return res.scalars().all()
+
+
     async def get_pinned(self, user_id: int) -> list[Note]:
         stmt = select(Note).where(
             Note.user_id == user_id,

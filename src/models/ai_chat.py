@@ -31,3 +31,8 @@ class AIMessage(Base, TimestampMixin):
     tokens: Mapped[int | None] = mapped_column(Integer)
 
     conversation: Mapped["AIConversation"] = relationship(back_populates="messages")
+
+# Aliases for backward compatibility
+Conversation = AIConversation
+Message = AIMessage
+

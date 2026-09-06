@@ -47,3 +47,8 @@ class FlashcardReview(Base, TimestampMixin):
     reviewed_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
 
     card: Mapped["Flashcard"] = relationship(back_populates="reviews")
+
+# Aliases for backward compatibility
+Deck = FlashcardDeck
+Card = Flashcard
+

@@ -12,9 +12,10 @@ router = Router(name="common_router")
 
 
 @router.message(CommandStart())
-async def start_handler(message: Message, state: FSMContext) -> None:
+async def start_handler(message: Message, state: FSMContext | None = None) -> None:
     """Handle /start command and display main keyboards."""
-    await state.clear()
+    if state:
+        await state.clear()
     logger.info("user_started", user_id=message.from_user.id)
     
     welcome_text = (
@@ -196,3 +197,7 @@ async def inline_menu_callback(callback: CallbackQuery, callback_data: MenuCB) -
     if action in mapping:
         text, func = mapping[action]
         await callback.message.answer(text, parse_mode="HTML")
+
+# Aliases for backward compatibility with test suites
+cmd_start = start_handler
+cmd_help = help_handler

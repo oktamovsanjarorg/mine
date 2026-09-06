@@ -9,6 +9,10 @@ class ReminderRepository(BaseRepository[Reminder]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, Reminder)
 
+    async def get_by_user_id(self, user_id: int, limit: int = 10, offset: int = 0) -> Sequence[Reminder]:
+        return await self.get_active(user_id=user_id, offset=offset, limit=limit)
+
+
     async def get_active(self, user_id: int, offset: int = 0, limit: int = 10) -> Sequence[Reminder]:
         stmt = select(Reminder).where(
             Reminder.user_id == user_id,

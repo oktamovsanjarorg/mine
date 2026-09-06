@@ -22,7 +22,48 @@ async def on_startup(dispatcher: Dispatcher, bot: Bot) -> None:
         logger.warning("MinIO storage init warning", error=str(e))
     scheduler = init_scheduler()
     
-    # 10-degree sharp weather alert (daily at 20:00)
+    # 1. Automated Reminders Worker (every 30 seconds)
+    async def check_due_reminders():
+        from src.core.database import session_factory
+        from src.repositories.reminder import ReminderRepository
+        from datetime import datetime, timezone, timedelta
+        if not session_factory:
+            return
+        try:
+            async with session_factory() as session:
+                repo = ReminderRepository(session)
+                now = datetime.now(timezone.utc)
+                due_reminders = await repo.get_due_reminders(before=now)
+                for rem in due_reminders:
+                    try:
+                        await bot.send_message(
+                            chat_id=rem.user_id,
+                            text=(
+                                f"⏰ <b>ESLATMA VAQTI KELDI!</b>\n\n"
+                                f"📌 <b>{rem.title}</b>\n"
+                                f"🕒 Belgilangan vaqt: {rem.remind_at.strftime('%Y-%m-%d %H:%M')}"
+                            ),
+                            parse_mode="HTML"
+                        )
+                        if str(rem.repeat_type) in ("daily", "DAILY"):
+                            rem.remind_at = rem.remind_at + timedelta(days=1)
+                        elif str(rem.repeat_type) in ("weekly", "WEEKLY"):
+                            rem.remind_at = rem.remind_at + timedelta(weeks=1)
+                        else:
+                            rem.is_active = False
+                        rem.last_triggered_at = now
+                        await session.flush()
+                    except Exception as e:
+                        logger.error("Failed to deliver reminder", reminder_id=rem.id, error=str(e))
+                await session.commit()
+        except Exception as e:
+            logger.error("Error in reminder worker", error=str(e))
+
+    from apscheduler.triggers.cron import CronTrigger
+    from apscheduler.triggers.interval import IntervalTrigger
+    scheduler.add_job(check_due_reminders, IntervalTrigger(seconds=30), id="reminder_worker", replace_existing=True)
+
+    # 2. 10-degree sharp weather alert (daily at 20:00)
     async def daily_weather_check():
         from src.integrations.weather import weather_client
         from src.handlers.guest import OWNER_ID
@@ -33,8 +74,8 @@ async def on_startup(dispatcher: Dispatcher, bot: Bot) -> None:
             except Exception as e:
                 logger.error("Failed to send weather alert", error=str(e))
 
-    from apscheduler.triggers.cron import CronTrigger
     scheduler.add_job(daily_weather_check, CronTrigger(hour=20, minute=0, timezone="Asia/Tashkent"), id="weather_alert", replace_existing=True)
+
 
     register_middlewares(dispatcher)
     register_routers(dispatcher)

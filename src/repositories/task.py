@@ -10,6 +10,22 @@ class TaskRepository(BaseRepository[Task]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, Task)
 
+    async def get_by_user_id(self, user_id: int, limit: int = 100, offset: int = 0) -> Sequence[Task]:
+        return await self.get_all(user_id=user_id, offset=offset, limit=limit)
+
+    async def get_due_today(self, user_id: int, timezone_str: str = "Asia/Tashkent") -> list[Task]:
+        return await self.get_today_tasks(user_id, timezone_str)
+
+    async def get_overdue(self, user_id: int, timezone_str: str = "Asia/Tashkent") -> list[Task]:
+        return await self.get_overdue_tasks(user_id, timezone_str)
+
+    async def get_upcoming(self, user_id: int, days: int = 7, timezone_str: str = "Asia/Tashkent") -> list[Task]:
+        return await self.get_upcoming_tasks(user_id, days, timezone_str)
+
+    async def search(self, user_id: int, query: str) -> Sequence[Task]:
+        return await self.search_tasks(user_id, query)
+
+
     async def get_by_status(self, user_id: int, status: str, offset: int = 0, limit: int = 10) -> Sequence[Task]:
         stmt = select(Task).options(selectinload(Task.tags), selectinload(Task.category)).where(
             Task.user_id == user_id,

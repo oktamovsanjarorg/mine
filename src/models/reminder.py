@@ -28,9 +28,17 @@ class Reminder(Base, TimestampMixin):
     repeat_interval: Mapped[int | None] = mapped_column(Integer)
     repeat_end_date: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    snooze_count: Mapped[int] = mapped_column(Integer, default=0)
     last_triggered_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
     task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+
+    @property
+    def is_sent(self) -> bool:
+        return not self.is_active
+
+    @is_sent.setter
+    def is_sent(self, value: bool):
+        self.is_active = not value
+
 
     user: Mapped["User"] = relationship()
     task: Mapped["Task"] = relationship()

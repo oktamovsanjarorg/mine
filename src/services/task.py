@@ -1,5 +1,5 @@
 import structlog
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.repositories.task import TaskRepository
@@ -9,11 +9,23 @@ logger = structlog.get_logger(__name__)
 
 class TaskService:
     """Service for managing tasks."""
-    def __init__(self, session: AsyncSession):
-        self.session = session
-        self.repo = TaskRepository(session)
+    def __init__(self, session_or_repo):
+        if isinstance(session_or_repo, AsyncSession):
+            self.session = session_or_repo
+            self.repo = TaskRepository(self.session)
+        else:
+            self.repo = session_or_repo
+            self.session = getattr(session_or_repo, "session", None)
 
-    async def create_task(self, user_id: int, title: str, description: Optional[str] = None, due_date: Optional[datetime] = None) -> Task:
+    async def create_task(
+        self,
+        user_id: int,
+        title: str,
+        description: Optional[str] = None,
+        due_date: Optional[datetime] = None,
+        priority: Any = "medium",
+        **kwargs
+    ) -> Task:
         """Create a new task."""
         try:
             task = await self.repo.create(
@@ -21,13 +33,16 @@ class TaskService:
                 title=title,
                 description=description,
                 due_date=due_date,
-                is_completed=False
+                priority=priority,
+                status="pending"
             )
-            await self.session.commit()
+            if self.session:
+                await self.session.commit()
             logger.info("Vazifa yaratildi", task_id=task.id, user_id=user_id)
             return task
         except Exception as e:
-            await self.session.rollback()
+            if self.session:
+                await self.session.rollback()
             logger.error("Vazifa yaratishda xatolik", error=str(e))
             raise
 
@@ -35,19 +50,26 @@ class TaskService:
         """Get user tasks."""
         return await self.repo.get_by_user_id(user_id, limit, offset)
 
+    async def get_user_tasks(self, user_id: int, limit: int = 100, offset: int = 0) -> List[Task]:
+        """Alias for get_tasks."""
+        return await self.get_tasks(user_id, limit, offset)
+
     async def update_task(self, task_id: int, **kwargs) -> Task:
         """Update an existing task."""
         task = await self.repo.update(task_id, **kwargs)
-        await self.session.commit()
+        if self.session:
+            await self.session.commit()
         return task
 
     async def complete_task(self, task_id: int) -> Task:
         """Mark task as completed."""
-        task = await self.repo.update(task_id, is_completed=True, completed_at=datetime.utcnow())
-        await self.session.commit()
+        task = await self.repo.update(task_id, status="completed", completed_at=datetime.now(timezone.utc))
+        if self.session:
+            await self.session.commit()
         return task
 
     async def delete_task(self, task_id: int) -> bool:
+
         """Delete a task."""
         result = await self.repo.delete(task_id)
         await self.session.commit()

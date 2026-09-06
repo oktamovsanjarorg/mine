@@ -11,6 +11,9 @@ class HabitFrequency(str, enum.Enum):
     MONTHLY = "monthly"
     CUSTOM = "custom"
 
+    def __str__(self) -> str:
+        return self.value
+
 class Habit(Base, TimestampMixin):
     """Habit tracking model."""
     __tablename__ = "habits"
@@ -30,6 +33,31 @@ class Habit(Base, TimestampMixin):
     total_completions: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+    def __init__(self, **kwargs):
+        if "title" in kwargs and "name" not in kwargs:
+            kwargs["name"] = kwargs.pop("title")
+        if "longest_streak" in kwargs and "best_streak" not in kwargs:
+            kwargs["best_streak"] = kwargs.pop("longest_streak")
+        super().__init__(**kwargs)
+
+    @property
+    def title(self) -> str:
+        return self.name
+
+    @title.setter
+    def title(self, value: str):
+        self.name = value
+
+    @property
+    def longest_streak(self) -> int:
+        return self.best_streak
+
+    @longest_streak.setter
+    def longest_streak(self, value: int):
+        self.best_streak = value
+
 
     logs: Mapped[List["HabitLog"]] = relationship(back_populates="habit", cascade="all, delete-orphan")
 
