@@ -25,3 +25,54 @@ class PomodoroSession(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text)
 
     task: Mapped["Task"] = relationship()
+
+    def __init__(self, **kwargs):
+        if "status" in kwargs:
+            st = kwargs.pop("status")
+            if st == "completed":
+                kwargs["completed"] = True
+                kwargs["interrupted"] = False
+            elif st == "interrupted":
+                kwargs["completed"] = False
+                kwargs["interrupted"] = True
+            elif st == "active":
+                kwargs["completed"] = False
+                kwargs["interrupted"] = False
+        if "type" not in kwargs:
+            kwargs["type"] = PomodoroType.WORK
+        super().__init__(**kwargs)
+
+    @property
+    def status(self) -> str:
+        if self.ended_at is None:
+            return "active"
+        if self.completed:
+            return "completed"
+        if self.interrupted:
+            return "interrupted"
+        return "finished"
+
+    @status.setter
+    def status(self, val: str) -> None:
+        if val == "completed":
+            self.completed = True
+            self.interrupted = False
+        elif val == "interrupted":
+            self.completed = False
+            self.interrupted = True
+        elif val == "active":
+            self.completed = False
+            self.interrupted = False
+
+    @property
+    def start_time(self):
+        return self.started_at
+
+    @property
+    def end_time(self):
+        return self.ended_at
+
+    @property
+    def duration(self):
+        return self.duration_minutes
+

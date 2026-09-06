@@ -1,14 +1,23 @@
+import hashlib
+import httpx
 import structlog
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.repositories.monitor import MonitorRepository
-from src.models.monitor import Monitor
+from src.models.monitor import WebMonitor, Monitor
 
 logger = structlog.get_logger(__name__)
 
 class WebScraper:
     async def get_content(self, url: str) -> str:
-        return "Sayt tarkibi..."
+        try:
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+                res = await client.get(url)
+                snippet = res.text[:100].strip().replace("\n", " ")
+                content_hash = hashlib.md5(res.content).hexdigest()[:8]
+                return f"HTTP {res.status_code} | Hash: {content_hash} | {snippet}"
+        except Exception as e:
+            return f"Xatolik: {str(e)}"
 
 class MonitorService:
     """Service for website monitoring."""
@@ -17,7 +26,10 @@ class MonitorService:
         self.repo = MonitorRepository(session)
         self.scraper = WebScraper()
 
-    async def create_monitor(self, user_id: int, url: str, name: str) -> Monitor:
+    async def get_user_monitors(self, user_id: int) -> List[WebMonitor]:
+        return await self.repo.get_by_user_id(user_id)
+
+    async def create_monitor(self, user_id: int, url: str, name: str) -> WebMonitor:
         """Create a new monitor."""
         try:
             content = await self.scraper.get_content(url)
@@ -25,7 +37,7 @@ class MonitorService:
                 user_id=user_id,
                 url=url,
                 name=name,
-                last_content=content,
+                last_value=content,
                 is_active=True
             )
             await self.session.commit()
@@ -35,27 +47,33 @@ class MonitorService:
             logger.error("Monitor yaratishda xatolik", error=str(e))
             raise
 
-    async def check_monitor(self, monitor_id: int) -> bool:
+    async def delete_monitor(self, monitor_id: int) -> bool:
+        res = await self.repo.delete(monitor_id)
+        await self.session.commit()
+        return res
+
+    async def check_monitor(self, monitor_id: int) -> tuple[bool, str]:
         """Check monitor with web scraper diff detection."""
         monitor = await self.repo.get_by_id(monitor_id)
         if not monitor or not monitor.is_active:
-            return False
+            return False, "Monitor topilmadi yoki nofaol"
             
         new_content = await self.scraper.get_content(monitor.url)
-        if new_content != monitor.last_content:
-            await self.repo.update(monitor_id, last_content=new_content)
+        changed = new_content != monitor.last_value
+        if changed:
+            await self.repo.update(monitor_id, last_value=new_content)
             await self.session.commit()
-            return True
-        return False
+            return True, f"O'zgarish aniqlandi:\n{new_content}"
+        return False, f"O'zgarish yo'q (Holat: {new_content})"
 
     async def check_all_monitors(self) -> List[dict]:
         """Check all active monitors and return alerts."""
         monitors = await self.repo.get_all_active()
         alerts = []
         for m in monitors:
-            has_changed = await self.check_monitor(m.id)
+            has_changed, msg = await self.check_monitor(m.id)
             if has_changed:
-                alerts.append({"user_id": m.user_id, "message": f"🔔 Sayt o'zgardi: {m.name} ({m.url})"})
+                alerts.append({"user_id": m.user_id, "message": f"🔔 Sayt o'zgardi: {m.name} ({m.url})\n{msg}"})
         return alerts
 
     async def alert_on_changes(self, bot) -> None:
@@ -69,3 +87,4 @@ class MonitorService:
                 )
             except Exception as e:
                 logger.error("Ogohlantirish yuborishda xatolik", error=str(e))
+

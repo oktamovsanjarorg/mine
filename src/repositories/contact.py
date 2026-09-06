@@ -57,6 +57,9 @@ class ContactRepository(BaseRepository[Contact]):
             Contact.user_id == user_id,
             Contact.is_favorite == True,
             Contact.is_deleted == False
-        ).order_by(Contact.first_name.asc())
+        ).order_by(Contact.name.asc())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_by_user_id(self, user_id: int, limit: int = 100, offset: int = 0) -> list[Contact]:
+        return list(await self.get_all(user_id, offset=offset, limit=limit, order_by="name", desc=False))

@@ -15,6 +15,9 @@ class HealthLogType(str, enum.Enum):
     BLOOD_PRESSURE = "blood_pressure"
     MOOD = "mood"
 
+    def __str__(self) -> str:
+        return self.value
+
 class HealthLog(Base, TimestampMixin):
     """Health tracking log."""
     __tablename__ = "health_logs"
@@ -26,5 +29,15 @@ class HealthLog(Base, TimestampMixin):
     unit: Mapped[str | None] = mapped_column(String(50))
     logged_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
     notes: Mapped[str | None] = mapped_column(Text)
+
+    def __init__(self, **kwargs):
+        if "metric_type" in kwargs and "type" not in kwargs:
+            kwargs["type"] = kwargs.pop("metric_type")
+        if "date" in kwargs and "logged_at" not in kwargs:
+            d = kwargs.pop("date")
+            kwargs["logged_at"] = datetime.datetime.combine(d, datetime.time.min) if isinstance(d, datetime.date) else d
+        if "logged_at" not in kwargs:
+            kwargs["logged_at"] = datetime.datetime.utcnow()
+        super().__init__(**kwargs)
 
     user: Mapped["User"] = relationship()

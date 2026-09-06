@@ -52,3 +52,6 @@ class BookmarkRepository(BaseRepository[Bookmark]):
         )
         result = await self.session.execute(stmt)
         return result.scalar_one()
+
+    async def get_by_user_id(self, user_id: int, limit: int = 10, offset: int = 0) -> Sequence[Bookmark]:
+        return await self.get_all(user_id, offset=offset, limit=limit)

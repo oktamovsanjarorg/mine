@@ -2,7 +2,7 @@ import structlog
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.repositories.quick_note import QuickNoteRepository
-from src.models.quick_note import QuickNote
+from src.models.quick_note import QuickNote, QuickNoteType
 
 logger = structlog.get_logger(__name__)
 
@@ -12,13 +12,15 @@ class QuickNoteService:
         self.session = session
         self.repo = QuickNoteRepository(session)
 
-    async def create(self, user_id: int, content: str) -> QuickNote:
+    async def create(self, user_id: int, content: str, is_pinned: bool = False, source: str = "telegram") -> QuickNote:
         """Create a new quick note."""
         try:
             note = await self.repo.create(
                 user_id=user_id,
                 content=content,
-                is_pinned=False
+                is_pinned=is_pinned,
+                source=source,
+                type=QuickNoteType.TEXT
             )
             await self.session.commit()
             return note
@@ -31,10 +33,23 @@ class QuickNoteService:
         """Get pinned quick notes."""
         return await self.repo.get_pinned(user_id)
 
-    async def get_recent(self, user_id: int, limit: int = 10) -> List[QuickNote]:
+    async def get_recent(self, user_id: int, limit: int = 15) -> List[QuickNote]:
         """Get recent quick notes."""
         return await self.repo.get_recent(user_id, limit)
 
     async def search(self, user_id: int, query: str) -> List[QuickNote]:
         """Search quick notes."""
         return await self.repo.search(user_id, query)
+
+    async def toggle_pin(self, note_id: int) -> bool:
+        """Toggle pin state."""
+        res = await self.repo.toggle_pin(note_id)
+        await self.session.commit()
+        return res
+
+    async def delete(self, note_id: int) -> bool:
+        """Delete quick note."""
+        res = await self.repo.delete(note_id)
+        await self.session.commit()
+        return res
+

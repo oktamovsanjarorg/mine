@@ -23,3 +23,16 @@ class Contact(Base, TimestampMixin, SoftDeleteMixin):
     birthday_reminder: Mapped[bool] = mapped_column(Boolean, default=False)
 
     category: Mapped["Category"] = relationship()
+
+    def __init__(self, **kwargs):
+        if "first_name" in kwargs and "name" not in kwargs:
+            kwargs["name"] = kwargs.pop("first_name")
+        super().__init__(**kwargs)
+
+    @property
+    def first_name(self) -> str:
+        return self.name
+
+    @first_name.setter
+    def first_name(self, val: str):
+        self.name = val

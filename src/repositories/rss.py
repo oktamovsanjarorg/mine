@@ -11,13 +11,35 @@ class RSSRepository(BaseRepository[RSSFeed]):
 
     async def get_active_feeds(self) -> list[RSSFeed]:
         stmt = select(RSSFeed).where(
-            RSSFeed.is_active == True,
-            RSSFeed.is_deleted == False
+            RSSFeed.is_active == True
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def add_item(self, feed_id: int, guid: str, title: str, link: str, description: str | None, published_at: datetime | None) -> RSSItem | None:
+    async def get_all_active(self) -> list[RSSFeed]:
+        return await self.get_active_feeds()
+
+    async def get_by_user_id(self, user_id: int) -> list[RSSFeed]:
+        stmt = select(RSSFeed).where(
+            RSSFeed.user_id == user_id
+        ).order_by(RSSFeed.created_at.desc())
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def item_exists(self, feed_id: int, guid: str) -> bool:
+        stmt = select(RSSItem).where(RSSItem.feed_id == feed_id, RSSItem.guid == guid)
+        result = await self.session.execute(stmt)
+        return result.scalars().first() is not None
+
+    async def get_unread(self, user_id: int, limit: int = 10) -> Sequence[RSSItem]:
+        stmt = select(RSSItem).join(RSSFeed).where(
+            RSSFeed.user_id == user_id,
+            RSSItem.is_read == False
+        ).order_by(RSSItem.fetched_at.desc()).limit(limit)
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def add_item(self, feed_id: int, guid: str, title: str, link: str, description: str | None = None, published_at: datetime | None = None) -> RSSItem | None:
         stmt = select(RSSItem).where(RSSItem.guid == guid)
         result = await self.session.execute(stmt)
         if result.scalars().first():

@@ -29,3 +29,6 @@ class SnippetRepository(BaseRepository[Snippet]):
         stmt = update(Snippet).where(Snippet.id == snippet_id).values(usage_count=Snippet.usage_count + 1)
         await self.session.execute(stmt)
         await self.session.flush()
+
+    async def get_by_user_id(self, user_id: int, limit: int = 100, offset: int = 0) -> Sequence[Snippet]:
+        return await self.get_all(user_id, offset=offset, limit=limit)

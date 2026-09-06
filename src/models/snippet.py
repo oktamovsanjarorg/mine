@@ -18,5 +18,30 @@ class CodeSnippet(Base, TimestampMixin, SoftDeleteMixin):
 
     category: Mapped["Category"] = relationship()
 
+    def __init__(self, **kwargs):
+        if "name" in kwargs and "title" not in kwargs:
+            kwargs["title"] = kwargs.pop("name")
+        if "content" in kwargs and "code" not in kwargs:
+            kwargs["code"] = kwargs.pop("content")
+        if "language" not in kwargs:
+            kwargs["language"] = "plaintext"
+        super().__init__(**kwargs)
+
+    @property
+    def name(self) -> str:
+        return self.title
+
+    @name.setter
+    def name(self, val: str):
+        self.title = val
+
+    @property
+    def content(self) -> str:
+        return self.code
+
+    @content.setter
+    def content(self, val: str):
+        self.code = val
+
 
 Snippet = CodeSnippet

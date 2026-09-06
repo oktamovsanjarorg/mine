@@ -25,6 +25,19 @@ class WebMonitor(Base, TimestampMixin):
 
     logs: Mapped[List["MonitorLog"]] = relationship(back_populates="monitor", cascade="all, delete-orphan")
 
+    def __init__(self, **kwargs):
+        if "last_content" in kwargs and "last_value" not in kwargs:
+            kwargs["last_value"] = kwargs.pop("last_content")
+        super().__init__(**kwargs)
+
+    @property
+    def last_content(self) -> str | None:
+        return self.last_value
+
+    @last_content.setter
+    def last_content(self, val: str | None) -> None:
+        self.last_value = val
+
 class MonitorLog(Base, TimestampMixin):
     """Monitor log model."""
     __tablename__ = "monitor_logs"

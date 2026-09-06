@@ -38,6 +38,9 @@ class RSSItem(Base, TimestampMixin):
     published_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     is_saved: Mapped[bool] = mapped_column(Boolean, default=False)
-    fetched_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
+    fetched_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), 
+        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
 
     feed: Mapped["RSSFeed"] = relationship(back_populates="items")

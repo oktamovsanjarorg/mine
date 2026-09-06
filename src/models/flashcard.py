@@ -34,6 +34,19 @@ class Flashcard(Base, TimestampMixin):
     total_reviews: Mapped[int] = mapped_column(Integer, default=0)
     correct_count: Mapped[int] = mapped_column(Integer, default=0)
 
+    def __init__(self, **kwargs):
+        if "repetition" in kwargs and "repetitions" not in kwargs:
+            kwargs["repetitions"] = kwargs.pop("repetition")
+        super().__init__(**kwargs)
+
+    @property
+    def repetition(self) -> int:
+        return self.repetitions
+
+    @repetition.setter
+    def repetition(self, val: int):
+        self.repetitions = val
+
     deck: Mapped["FlashcardDeck"] = relationship(back_populates="cards")
     reviews: Mapped[List["FlashcardReview"]] = relationship(back_populates="card", cascade="all, delete-orphan")
 

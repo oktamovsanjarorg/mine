@@ -1,5 +1,6 @@
 from aiogram import Router
 
+from .guest import router as guest_router
 from .common import router as common_router
 from .tasks import router as tasks_router
 from .notes import router as notes_router
@@ -29,6 +30,7 @@ def setup_handlers() -> Router:
     main_router = Router()
     
     main_router.include_routers(
+        guest_router,
         common_router,
         tasks_router,
         notes_router,

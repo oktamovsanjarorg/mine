@@ -9,9 +9,18 @@ class MonitorRepository(BaseRepository[WebMonitor]):
 
     async def get_active_monitors(self) -> list[WebMonitor]:
         stmt = select(WebMonitor).where(
-            WebMonitor.is_active == True,
-            WebMonitor.is_deleted == False
+            WebMonitor.is_active == True
         )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_all_active(self) -> list[WebMonitor]:
+        return await self.get_active_monitors()
+
+    async def get_by_user_id(self, user_id: int) -> list[WebMonitor]:
+        stmt = select(WebMonitor).where(
+            WebMonitor.user_id == user_id
+        ).order_by(WebMonitor.created_at.desc())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
