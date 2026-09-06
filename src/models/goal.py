@@ -11,6 +11,9 @@ class GoalStatus(str, enum.Enum):
     COMPLETED = "completed"
     ABANDONED = "abandoned"
 
+    def __str__(self) -> str:
+        return self.value
+
 class Goal(Base, TimestampMixin):
     """Goal model."""
     __tablename__ = "goals"
@@ -27,6 +30,29 @@ class Goal(Base, TimestampMixin):
     icon: Mapped[str | None] = mapped_column(String(50))
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"))
     completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
+
+    def __init__(self, **kwargs):
+        if "target" in kwargs and "target_value" not in kwargs:
+            kwargs["target_value"] = kwargs.pop("target")
+        if "current" in kwargs and "current_value" not in kwargs:
+            kwargs["current_value"] = kwargs.pop("current")
+        super().__init__(**kwargs)
+
+    @property
+    def target(self) -> float:
+        return float(self.target_value) if self.target_value is not None else 0.0
+
+    @target.setter
+    def target(self, val: float):
+        self.target_value = val
+
+    @property
+    def current(self) -> float:
+        return float(self.current_value) if self.current_value is not None else 0.0
+
+    @current.setter
+    def current(self, val: float):
+        self.current_value = val
 
     milestones: Mapped[List["GoalMilestone"]] = relationship(back_populates="goal", cascade="all, delete-orphan")
 

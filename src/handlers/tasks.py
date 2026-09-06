@@ -156,7 +156,8 @@ async def add_task_finish(message: Message, state: FSMContext, session: AsyncSes
         user_id=user.id,
         title=data["title"],
         description=data.get("description"),
-        due_date=due_date
+        due_date=due_date,
+        priority=data.get("priority", "medium")
     )
 
     due_str = f"\n📅 Muddat: {task.due_date.strftime('%Y-%m-%d %H:%M')}" if task.due_date else ""

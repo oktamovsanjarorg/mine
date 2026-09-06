@@ -2,6 +2,7 @@
 Reminders Handler - Relative time parsing, listing, and scheduling.
 """
 
+import re
 import structlog
 from datetime import datetime
 from aiogram import Router, F
@@ -67,22 +68,43 @@ async def list_reminders_handler(message: Message, session: AsyncSession, user: 
 
 @router.message(Command("remind"))
 async def add_reminder_quick(message: Message, state: FSMContext, session: AsyncSession, user: User) -> None:
-    parts = message.text.split(maxsplit=2)
-    if len(parts) >= 3:
-        time_text = parts[1]
-        title = parts[2]
-        dt = parse_datetime(time_text)
-        if dt:
-            service = ReminderService(session)
-            rem = await service.create_reminder(user_id=user.id, title=title, remind_at=dt)
-            await message.answer(
-                f"⏰ <b>Eslatma muvaffaqiyatli saqlandi!</b>\n\n"
-                f"📌 <b>{rem.title}</b>\n"
-                f"🕒 Vaqti: <b>{rem.remind_at.strftime('%Y-%m-%d %H:%M')}</b>\n"
-                f"Vaqt kelganda sizga xabar beraman! 🤖",
-                parse_mode="HTML"
-            )
-            return
+    text = message.text.split(maxsplit=1)
+    if len(text) > 1:
+        payload = text[1].strip()
+        # 1. Try matching "ertaga HH:MM <title>"
+        ertaga_m = re.match(r'^(ertaga\s+\d{1,2}:\d{2})\s+(.+)$', payload, re.IGNORECASE)
+        if ertaga_m:
+            time_part = ertaga_m.group(1)
+            title = ertaga_m.group(2).strip()
+            dt = parse_datetime(time_part)
+            if dt:
+                service = ReminderService(session)
+                rem = await service.create_reminder(user_id=user.id, title=title, remind_at=dt)
+                await message.answer(
+                    f"⏰ <b>Eslatma muvaffaqiyatli saqlandi!</b>\n\n"
+                    f"📌 <b>{rem.title}</b>\n"
+                    f"🕒 Vaqti: <b>{rem.remind_at.strftime('%Y-%m-%d %H:%M')}</b>\n"
+                    f"Vaqt kelganda sizga xabar beraman! 🤖",
+                    parse_mode="HTML"
+                )
+                return
+
+        # 2. Try single-token time like "15m <title>" or "2h <title>"
+        parts = payload.split(maxsplit=1)
+        if len(parts) == 2:
+            time_text, title = parts[0], parts[1].strip()
+            dt = parse_datetime(time_text)
+            if dt:
+                service = ReminderService(session)
+                rem = await service.create_reminder(user_id=user.id, title=title, remind_at=dt)
+                await message.answer(
+                    f"⏰ <b>Eslatma muvaffaqiyatli saqlandi!</b>\n\n"
+                    f"📌 <b>{rem.title}</b>\n"
+                    f"🕒 Vaqti: <b>{rem.remind_at.strftime('%Y-%m-%d %H:%M')}</b>\n"
+                    f"Vaqt kelganda sizga xabar beraman! 🤖",
+                    parse_mode="HTML"
+                )
+                return
 
     await state.set_state(ReminderCreate.time)
     await message.answer(
